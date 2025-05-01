@@ -367,6 +367,129 @@ footer {
   z-index: 20;
 }
 
+.paginacao {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.paginacao button {
+  background-color: #d4af37;
+  color: #111;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+.paginacao button:hover {
+  background-color: #b8962e;
+}
+
+#avaliacoes-container {
+  min-height: calc(3 * 121.65px + 3rem + 3*32px );
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-start;
+}
+.avaliacao {
+  max-width: 600px;
+  width: 100%;
+}
+
+.agendamento {
+  padding: 4rem 2rem;
+  background-color: #1a1a1a;
+  text-align: center;
+}
+.agendamento h3 {
+  color: #d4af37;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+.form-agendamento {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 400px;
+  margin: 1rem auto 0;
+}
+.form-agendamento input,
+.form-agendamento button {
+  padding: 0.75rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  border: none;
+}
+.form-agendamento input {
+  background-color: #222;
+  color: #fff;
+}
+.form-agendamento button {
+  background-color: #d4af37;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.form-agendamento button:hover {
+  background-color: #b9941d;
+}
+.mensagem-resultado {
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
+.calendario {
+  padding: 4rem 2rem;
+  background-color: #111;
+  text-align: center;
+}
+.calendario h3 {
+  color: #d4af37;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+#calendar {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 4px;
+  max-width: 350px;
+  margin: auto;
+}
+#calendar .day {
+  padding: 8px 0;
+  background-color: #222;
+  border-radius: 4px;
+  cursor: default;
+}
+#calendar .day.highlight {
+  background-color: #d4af37;
+  color: #111;
+  cursor: pointer;
+}
+#horarios-disponiveis {
+  margin-top: 1.5rem;
+  color: #fff;
+}
+#horarios-disponiveis h4 {
+  margin-bottom: 0.5rem;
+}
+#horarios-disponiveis ul {
+  list-style: none;
+  padding: 0;
+}
+#horarios-disponiveis li {
+  margin: 0.3rem 0;
+}
+
+
 @media (max-width: 768px) {
   main {
     padding: 0 1rem;
@@ -472,40 +595,101 @@ footer {
   }
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+}
+.modal-overlay.modal-open {
+  opacity: 1;
+  pointer-events: auto;
+}
 
-.paginacao {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
+.modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background: #1e1e1e;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+.modal.modal-open {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.5rem; right: 0.5rem;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #fff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.modal-close:hover {
+  color: #d4af37;
+}
+
+/* Grid do calendário */
+#calendar {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 6px;
   margin-top: 1rem;
 }
-
-.paginacao button {
-  background-color: #d4af37;
-  color: #111;
-  border: none;
-  padding: 0.5rem 1rem;
+#calendar .day {
+  padding: 0.6rem 0;
+  background: #2b2b2b;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+}
+#calendar .day.highlight {
+  background: #25D366;
+  color: #000;
   cursor: pointer;
-  font-weight: bold;
-  border-radius: 5px;
-  transition: background-color 0.3s;
+  transition: background 0.2s;
+}
+#calendar .day.highlight:hover {
+  background: #d4af37;
+  color: #111;
 }
 
-.paginacao button:hover {
-  background-color: #b8962e;
+/* Lista de horários */
+#horarios-disponiveis {
+  margin-top: 1rem;
+  text-align: left;
 }
-
-#avaliacoes-container {
-  min-height: calc(3 * 121.65px + 3rem + 3*32px );
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-  justify-content: flex-start;
+#horarios-disponiveis h4 {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  color: #d4af37;
 }
-.avaliacao {
-  max-width: 600px;
-  width: 100%;
+#horarios-disponiveis ul {
+  list-style: none;
+  padding: 0;
 }
-
+#horarios-disponiveis li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+#horarios-disponiveis li:hover {
+  color: #25D366;
+}

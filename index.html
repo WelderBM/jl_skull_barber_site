@@ -26,6 +26,7 @@
     </nav>
   </header>
   <main>
+
     <section id="home" class="hero fade-in">
       <div class="hero-content"></div>
     </section>
@@ -48,6 +49,7 @@
           </div>
         </div>
       </div>
+      <button class="btn-agendar">Agendar Horário</button>
     </section>
 
     <section class="sobre fade-in" id="sobre">
@@ -105,7 +107,14 @@
   <a href="https://wa.me/+5595984058157" class="whatsapp-btn" target="_blank">
     <img src="./assets/whatsapp-icon.webp" alt="Agende aqui" />
   </a>
-  <script src="./script.js"></script>
+  <div class="modal-overlay hidden" id="modal-overlay"></div>
+  <div class="modal hidden" id="modal">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <h3>Selecione uma data</h3>
+    <div id="calendar"></div>
+    <div id="horarios-disponiveis"></div>
+  </div>
+  <script type="module" src="./script.js"></script>
 </body>
 
 </html>
