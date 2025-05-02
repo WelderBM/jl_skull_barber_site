@@ -8,195 +8,289 @@ import {
     addDoc
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_AUTH_DOMAIN",
-    projectId: "SEU_PROJECT_ID",
-    storageBucket: "SEU_BUCKET",
-    messagingSenderId: "SEU_SENDER_ID",
-    appId: "SEU_APP_ID"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+document.addEventListener("DOMContentLoaded", () => {
+    // 1) Inicializa Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyB8Ax9_9JeVV2D48v6C7JqPmC4XG5gPryw",
+        authDomain: "mix-novidades.firebaseapp.com",
+        projectId: "mix-novidades",
+        storageBucket: "mix-novidades.appspot.com",
+        messagingSenderId: "155436196034",
+        appId: "1:155436196034:web:7c412f5e3c8ae075a55b5b",
+        measurementId: "G-4V6C9HQXBN"
+    };
+    initializeApp(firebaseConfig);
+    const db = getFirestore();
 
-// gerar timeslots de 30 em 30 minutos (08:00–19:30)
-const timeslots = [];
-for (let h = 8; h <= 19; h++) {
-    const hh = String(h).padStart(2, '0');
-    timeslots.push(`${hh}:00`, `${hh}:30`);
-}
+    // 2) Gera timeslots de 30 em 30 entre 08:00 e 19:30
+    const timeslots = [];
+    for (let h = 8; h <= 19; h++) {
+        const hh = String(h).padStart(2, "0");
+        timeslots.push(`${hh}:00`, `${hh}:30`);
+    }
 
-// referências aos modais e botões
-const btnOpen = document.getElementById("openAgendar");
-const overlay = document.getElementById("modalOverlay");
-const calModal = document.getElementById("calendarModal");
-const tsModal = document.getElementById("timeslotModal");
-const btnCloseCal = document.getElementById("closeCalendar");
-const btnCloseTs = document.getElementById("closeTimeslot");
+    // 3) Referências ao DOM
+    const btnAgendar = document.querySelector(".btn-agendar");
+    const overlay = document.getElementById("modal-overlay");
+    const modal = document.getElementById("modal");
+    const btnClose = document.getElementById("modal-close");
+    const calEl = document.getElementById("calendar");
+    const tsContainer = document.getElementById("horarios-disponiveis");
+    const bookingForm = document.getElementById("booking-form");
+    const inputNome = document.getElementById("inputNome");
+    const inputTel = document.getElementById("inputTelefone");
+    const btnConfirm = document.getElementById("btnConfirmar");
+    const msgResult = document.getElementById("mensagemResultado");
+    const navLinks = document.querySelectorAll(".nav-links a");
+    const fadeEls = document.querySelectorAll(".fade-in");
+    const logoContainer = document.querySelector(".logo-container");
 
-// abrir calendário
-btnOpen.addEventListener("click", async () => {
-    overlay.classList.remove("hidden");
-    calModal.classList.remove("hidden");
-    const today = new Date();
-    const bookings = await loadAvailabilities(today.getMonth(), today.getFullYear());
-    generateCalendar(today.getMonth(), today.getFullYear(), bookings);
-});
+    // Paginação de opiniões
+    const opinioesCont = document.getElementById("avaliacoes-container");
+    const prevPageBtn = document.getElementById("prev-page");
+    const nextPageBtn = document.getElementById("next-page");
+    const pageSpan = document.getElementById("pagina-atual");
 
-// fechar modais
-btnCloseCal.addEventListener("click", () => {
-    calModal.classList.add("hidden");
-    overlay.classList.add("hidden");
-});
-btnCloseTs.addEventListener("click", () => {
-    tsModal.classList.add("hidden");
-    overlay.classList.add("hidden");
-});
+    const opinioes = [
+        { nome: "André Costa", texto: "Fui muito bem atendido, recomendo demais!", estrelas: 5 },
+        { nome: "Lucas Menezes", texto: "Ambiente aconchegante e barbeiro profissional.", estrelas: 4 },
+        { nome: "Eduardo Lima", texto: "Volto sempre, satisfeito!", estrelas: 5 },
+        { nome: "Fernanda Dias", texto: "Ambiente limpo e decorado!", estrelas: 5 },
+        { nome: "Carlos Alberto", texto: "Preço justo e corte perfeito!", estrelas: 4 }
+    ];
+    const porPagina = 3;
+    let paginaAtual = 1;
 
-// carregar reservas do mês
-async function loadAvailabilities(month, year) {
-    const ag = collection(db, "agendamentos");
-    const start = new Date(year, month, 1).toISOString();
-    const end = new Date(year, month + 1, 1).toISOString();
-    const snap = await getDocs(
-        query(ag,
+    function totalPaginas() {
+        return Math.ceil(opinioes.length / porPagina);
+    }
+
+    function renderOpinioes() {
+        opinioesCont.innerHTML = "";
+        const inicio = (paginaAtual - 1) * porPagina;
+        opinioes.slice(inicio, inicio + porPagina).forEach(av => {
+            const div = document.createElement("div");
+            div.className = "avaliacao";
+            div.innerHTML = `
+        <p>"${av.texto}"</p>
+        <strong>${av.nome}</strong>
+        <div class="stars">${"★".repeat(av.estrelas)}${"☆".repeat(5 - av.estrelas)}</div>
+      `;
+            opinioesCont.appendChild(div);
+        });
+        pageSpan.textContent = `${paginaAtual} / ${totalPaginas()}`;
+        prevPageBtn.disabled = paginaAtual === 1;
+        nextPageBtn.disabled = paginaAtual === totalPaginas();
+    }
+
+    prevPageBtn.addEventListener("click", () => {
+        if (paginaAtual > 1) {
+            paginaAtual--;
+            renderOpinioes();
+        }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+        if (paginaAtual < totalPaginas()) {
+            paginaAtual++;
+            renderOpinioes();
+        }
+    });
+
+    renderOpinioes();
+
+    // Estado de seleção no agendamento
+    let selectedDate = null;
+    let selectedTime = null;
+
+    // 4) Abre modal e carrega calendário
+    btnAgendar.addEventListener("click", async () => {
+        document.body.classList.add("modal-opened");
+        overlay.classList.add("modal-open");
+        modal.classList.add("modal-open");
+
+        // Reset visual
+        bookingForm.classList.add("hidden");
+        calEl.classList.remove("hidden");
+        tsContainer.classList.remove("hidden");
+        msgResult.textContent = "";
+        btnConfirm.disabled = false;
+        inputNome.value = "";
+        inputTel.value = "";
+        selectedDate = null;
+        selectedTime = null;
+
+        // Carrega disponíveis a partir de hoje
+        const hoje = new Date();
+        const bookings = await loadAvailabilities(hoje.getMonth(), hoje.getFullYear());
+        generateCalendar(hoje.getMonth(), hoje.getFullYear(), bookings);
+    });
+
+    // 5) Fecha modal
+    btnClose.addEventListener("click", () => {
+        document.body.classList.remove("modal-opened");
+        overlay.classList.remove("modal-open");
+        modal.classList.remove("modal-open");
+    });
+
+    // 6) Busca agendamentos no Firestore
+    async function loadAvailabilities(month, year) {
+        const agRef = collection(db, "agendamentos");
+        const start = new Date(year, month, 1).toISOString();
+        const end = new Date(year, month + 1, 1).toISOString();
+        const snap = await getDocs(query(
+            agRef,
             where("status", "==", "confirmado"),
             where("horario", ">=", start),
             where("horario", "<", end)
-        )
-    );
-    const byDate = {};
-    snap.forEach(doc => {
-        const { horario } = doc.data();
-        const date = horario.slice(0, 10);
-        const time = horario.slice(11, 16);
-        byDate[date] ||= [];
-        byDate[date].push(time);
-    });
-    return byDate;
-}
-
-// montar calendário no modal
-function generateCalendar(month, year, bookingsByDate) {
-    const calEl = document.getElementById("calendar");
-    calEl.innerHTML = "";
-    ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].forEach(d => {
-        const w = document.createElement("div");
-        w.textContent = d;
-        w.style.fontWeight = "bold";
-        calEl.appendChild(w);
-    });
-    const firstWeekday = new Date(year, month, 1).getDay();
-    const lastDate = new Date(year, month + 1, 0).getDate();
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < firstWeekday; i++) {
-        calEl.appendChild(document.createElement("div"));
+        ));
+        const byDate = {};
+        snap.forEach(doc => {
+            const h = doc.data().horario;
+            const d = h.slice(0, 10), t = h.slice(11, 16);
+            byDate[d] = byDate[d] || [];
+            byDate[d].push(t);
+        });
+        return byDate;
     }
 
-    for (let d = 1; d <= lastDate; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const curDate = new Date(year, month, d);
-        const booked = bookingsByDate[dateStr] || [];
-        const dayEl = document.createElement("div");
-        dayEl.textContent = d;
-        dayEl.classList.add("day");
-        if (curDate >= todayStart && booked.length < timeslots.length) {
-            dayEl.classList.add("highlight");
-            dayEl.addEventListener("click", () => {
-                showAvailableTimes(dateStr, booked);
-                calModal.classList.add("hidden");
-                tsModal.classList.remove("hidden");
-            });
+    // 7) Gera calendário no modal
+    function generateCalendar(month, year, bookings) {
+        calEl.innerHTML = "";
+
+        // Cabeçalho dos dias da semana
+        ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].forEach(d => {
+            const wd = document.createElement("div");
+            wd.textContent = d;
+            wd.style.fontWeight = "bold";
+            calEl.appendChild(wd);
+        });
+
+        // Espaços antes do dia 1
+        const firstDay = new Date(year, month, 1).getDay();
+        for (let i = 0; i < firstDay; i++) {
+            calEl.appendChild(document.createElement("div"));
         }
-        calEl.appendChild(dayEl);
-    }
-}
 
-// exibir horários disponíveis no modal
-function showAvailableTimes(dateStr, booked) {
-    const container = document.getElementById("horarios-disponiveis");
-    container.innerHTML = `<h4>Horários para ${dateStr}</h4>`;
-    const ul = document.createElement("ul");
-    timeslots.forEach(t => {
-        if (!booked.includes(t)) {
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let d = 1; d <= lastDate; d++) {
+            const dateObj = new Date(year, month, d);
+            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const el = document.createElement("div");
+            el.textContent = d;
+            el.classList.add("day");
+
+            if (dateObj < today) {
+                el.classList.add("disabled");
+            } else {
+                const booked = bookings[dateStr] || [];
+                if (booked.length < timeslots.length) {
+                    el.classList.add("highlight");
+                    el.addEventListener("click", () => {
+                        selectedDate = dateStr;
+                        // marca visualmente o dia
+                        document.querySelectorAll("#calendar .selected")
+                            .forEach(x => x.classList.remove("selected"));
+                        el.classList.add("selected");
+                        showAvailableTimes(dateStr, booked);
+                    });
+                } else {
+                    el.classList.add("unavailable");
+                }
+            }
+            calEl.appendChild(el);
+        }
+    }
+
+    // 8) Exibe horários disponíveis
+    function showAvailableTimes(dateStr, booked) {
+        tsContainer.innerHTML = `<h4>Horários para ${dateStr}</h4>`;
+        const ul = document.createElement("ul");
+        timeslots.forEach(t => {
             const li = document.createElement("li");
             li.textContent = t;
+            if (booked.includes(t)) {
+                li.classList.add("unavailable");
+            } else {
+                li.classList.add("available");
+                li.addEventListener("click", () => {
+                    selectedTime = t;
+                    document.querySelectorAll("#horarios-disponiveis .selected")
+                        .forEach(x => x.classList.remove("selected"));
+                    li.classList.add("selected");
+                    // mostra formulário
+                    bookingForm.classList.remove("hidden");
+                });
+            }
             ul.appendChild(li);
+        });
+        tsContainer.appendChild(ul);
+    }
+
+    // 9) Confirma e salva no Firestore
+    btnConfirm.addEventListener("click", async () => {
+        if (!selectedDate || !selectedTime) {
+            msgResult.textContent = "⛔ Selecione data e horário.";
+            return;
+        }
+        const nome = inputNome.value.trim();
+        const tel = inputTel.value.trim();
+        if (!nome || !tel) {
+            msgResult.textContent = "⛔ Preencha nome e telefone.";
+            return;
+        }
+        const horarioISO = `${selectedDate}T${selectedTime}:00`;
+        try {
+            await addDoc(collection(db, "agendamentos"), {
+                horario: horarioISO,
+                nome,
+                telefone: tel,
+                status: "confirmado",
+                criadoEm: new Date().toISOString()
+            });
+            msgResult.textContent = "✅ Agendamento confirmado!";
+            btnConfirm.disabled = true;
+        } catch (e) {
+            console.error(e);
+            msgResult.textContent = "❌ Erro ao agendar. Tente novamente.";
         }
     });
-    container.appendChild(ul);
-}
 
-// resto do script: slider, nav, fade-in, hambúrguer e paginação de avaliações
-const slider = document.querySelector('.cortes-slider');
-const prevBtn = document.querySelector('.slider-btn.prev');
-const nextBtn = document.querySelector('.slider-btn.next');
-prevBtn?.addEventListener('click', () => slider?.scrollBy({ left: -240, behavior: 'smooth' }));
-nextBtn?.addEventListener('click', () => slider?.scrollBy({ left: 240, behavior: 'smooth' }));
+    // 10) Rolagem suave de nav
+    navLinks.forEach(link => {
+        link.addEventListener("click", e => {
+            e.preventDefault();
+            document.querySelector(link.getAttribute("href"))
+                ?.scrollIntoView({ behavior: "smooth" });
+            document.querySelector(".nav-links")?.classList.remove("active");
+        });
+    });
 
-document.querySelectorAll('.nav-links a').forEach(link => {
-    link.addEventListener('click', e => {
-        e.preventDefault();
-        const section = document.querySelector(link.getAttribute('href'));
-        if (section) section.scrollIntoView({ behavior: 'smooth' });
-        document.querySelector('.nav-links')?.classList.remove('active');
+    // 11) Fade-in on scroll
+    fadeEls.forEach(el => {
+        new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) el.classList.add("show");
+        }, { threshold: 0.1 }).observe(el);
+    });
+
+    // 12) Menu hamburger
+    const menuBtn = document.createElement("button");
+    menuBtn.innerHTML = "☰";
+    menuBtn.setAttribute("aria-label", "Abrir menu");
+    menuBtn.classList.add("hamburger");
+    logoContainer.insertAdjacentElement("afterend", menuBtn);
+    menuBtn.addEventListener("click", () => {
+        document.querySelector(".nav-links")?.classList.toggle("active");
     });
 });
 
-const fadeEls = document.querySelectorAll('.fade-in');
-const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) entry.target.classList.add('show');
+document.querySelectorAll('.wizard-next, .wizard-prev').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const to = btn.getAttribute('data-to');
+        document.querySelector('.booking-step.active').classList.remove('active');
+        document.querySelector(`.booking-step[data-step="${to}"]`).classList.add('active');
     });
-}, { threshold: 0.1 });
-fadeEls.forEach(el => observer.observe(el));
-
-const menuToggle = document.createElement('button');
-menuToggle.innerHTML = '☰';
-menuToggle.setAttribute('aria-label', 'Abrir menu');
-menuToggle.classList.add('hamburger');
-document.querySelector('.logo-container')?.insertAdjacentElement('afterend', menuToggle);
-menuToggle.addEventListener('click', () => document.querySelector('.nav-links')?.classList.toggle('active'));
-
-const avaliacoes = [
-    { nome: "André Costa", texto: "Fui muito bem atendido, recomendo demais!", estrelas: 5 },
-    { nome: "Lucas Menezes", texto: "Ambiente aconchegante e barbeiro muito profissional.", estrelas: 4 },
-    { nome: "Eduardo Lima", texto: "Voltei várias vezes, sempre saio satisfeito.", estrelas: 5 },
-    { nome: "Fernanda Dias", texto: "Ambiente limpo e bem decorado!", estrelas: 5 },
-    { nome: "Carlos Alberto", texto: "Preço justo e corte perfeito!", estrelas: 4 }
-];
-
-const porPagina = 3;
-let paginaAtual = 1;
-function getTotalPaginas() { return Math.ceil(avaliacoes.length / porPagina); }
-
-const container = document.getElementById("avaliacoes-container");
-const paginaAtualSpan = document.getElementById("pagina-atual");
-const btnAnterior = document.getElementById("prev-page");
-const btnProxima = document.getElementById("next-page");
-
-function renderAvaliacoes() {
-    container.innerHTML = "";
-    const total = getTotalPaginas();
-    const inicio = (paginaAtual - 1) * porPagina;
-    const fim = inicio + porPagina;
-    avaliacoes.slice(inicio, fim).forEach(av => {
-        const div = document.createElement("div");
-        div.classList.add("avaliacao");
-        div.innerHTML = `
-      <p>"${av.texto}"</p>
-      <strong>${av.nome}</strong>
-      <div class="stars">${"★".repeat(av.estrelas)}${"☆".repeat(5 - av.estrelas)}</div>
-    `;
-        container.appendChild(div);
-    });
-    paginaAtualSpan.textContent = `${paginaAtual} / ${total}`;
-    btnAnterior.disabled = paginaAtual === 1;
-    btnProxima.disabled = paginaAtual === total;
-}
-
-btnAnterior?.addEventListener("click", () => { if (paginaAtual > 1) { paginaAtual--; renderAvaliacoes(); } });
-btnProxima?.addEventListener("click", () => { if (paginaAtual < getTotalPaginas()) { paginaAtual++; renderAvaliacoes(); } });
-renderAvaliacoes();
-
+});
