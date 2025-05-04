@@ -16,6 +16,7 @@
         <img src="./assets/logo.jpg" alt="Logo barbearia" class="logo" />
         <h1 class="name">JL SKULL BARBER</h1>
       </div>
+      <button class="hamburger" aria-label="Abrir/Fechar menu">☰</button>
       <ul class="nav-links">
         <li><a href="#home">Home</a></li>
         <li><a href="#cortes">Cortes</a></li>
@@ -52,7 +53,7 @@
 
     <section class="sobre fade-in" id="sobre">
       <div class="sobre-container">
-        <img src="./assets/lucas.jpg" alt="Lucas Marco Rodrigues">
+        <img src="./assets/barbeiro-foto.webp" alt="Lucas Marco Rodrigues" class="barber-image" />
         <div class="sobre-conteudo">
           <h3>Sobre a JL SKULL BARBER</h3>
           <p>Fundada por <strong>Lucas Marco Rodrigues</strong>, a JL Skull Barber nasceu da paixão por cortes de cabelo
@@ -109,34 +110,39 @@
 
     <!-- Passo 1: Calendário -->
     <div class="booking-step active" data-step="1">
-      <h4>1. Selecione a data</h4>
+      <h4>1/3 Selecione a data</h4>
       <div id="calendar"></div>
       <div class="wizard-nav">
-        <button class="wizard-next" data-to="2">›</button>
+        <button class="wizard-next" data-to="2" id="btn-step1-next" disabled>Próximo</button>
       </div>
     </div>
 
     <!-- Passo 2: Horários -->
     <div class="booking-step" data-step="2">
-      <h4>2. Selecione o horário</h4>
+      <h4>2/3 Selecione o horário</h4>
       <ul id="horarios-disponiveis"></ul>
       <div class="wizard-nav">
-        <button class="wizard-prev" data-to="1">‹</button>
-        <button class="wizard-next" data-to="3">›</button>
+        <button class="wizard-prev" data-to="1">Anterior</button>
+        <button class="wizard-next" data-to="3" id="btn-step2-next" disabled>Próximo</button>
       </div>
     </div>
 
     <!-- Passo 3: Formulário -->
     <div class="booking-step" data-step="3">
-      <h4>3. Confirme seus dados</h4>
+      <h4>Finalize com seus dados</h4>
       <div id="booking-form">
+        <div id="booking-preview" class="preview hidden">
+          <strong>Data:</strong> <span id="preview-date"></span>
+          &nbsp;|&nbsp;
+          <strong>Hora:</strong> <span id="preview-time"></span>
+        </div>
         <input type="text" id="inputNome" placeholder="Seu nome" />
         <input type="tel" id="inputTelefone" placeholder="Seu telefone" />
         <button id="btnConfirmar">Confirmar Agendamento</button>
         <p id="mensagemResultado"></p>
       </div>
       <div class="wizard-nav">
-        <button class="wizard-prev" data-to="2">‹</button>
+        <button class="wizard-prev" data-to="2">Anterior</button>
       </div>
     </div>
   </div>
