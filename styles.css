@@ -781,6 +781,9 @@ wizard-next:not(:disabled):hover,
 
 /* Responsive */
 @media (max-width: 768px) {
+  .avaliacoes-verticais > div {
+    flex-direction: column;
+  }
   main { padding: 0 1rem; }
   .nav-links { display:none; position:absolute; top:80px; right:0; background:#000; flex-direction:column; width:100%; padding:1rem; }
   .nav-links.active { display:flex; }
