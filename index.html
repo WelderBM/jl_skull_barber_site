@@ -49,13 +49,20 @@
         </div>
       </div>
       <button class="btn-agendar">Agendar Horário</button>
+      <button id="btn-view-agendamentos" class="btn-secondary">
+        Ver meus agendamentos
+      </button>
     </section>
 
     <section class="sobre fade-in" id="sobre">
       <div class="sobre-container">
         <img src="./assets/barbeiro-foto.webp" alt="Lucas Marco Rodrigues" class="barber-image" />
         <div class="sobre-conteudo">
-          <h3>Sobre a JL SKULL BARBER</h3>
+          <div class="sobre-header">
+            <p class="about-label">Sobre</p>
+            <h3>JL SKULL BARBER</h3>
+            <div class="line-sobre"></div>
+          </div>
           <p>Fundada por <strong>Lucas Marco Rodrigues</strong>, a JL Skull Barber nasceu da paixão por cortes de cabelo
             com estilo e classe.</p>
           <ul class="destaques">
@@ -70,13 +77,34 @@
 
     <section class="avaliacoes-verticais fade-in" id="opinioes">
       <h3>Mais opiniões</h3>
-      <div id="avaliacoes-container"></div>
-      <div class="paginacao">
-        <button id="prev-page">Anterior</button>
-        <span id="pagina-atual">1</span>
-        <button id="next-page">Próxima</button>
+      <div>
+        <div>
+          <div id="avaliacoes-container"></div>
+          <div class="paginacao">
+            <button id="prev-page">Anterior</button>
+            <span id="pagina-atual">1</span>
+            <button id="next-page">Próxima</button>
+          </div>
+        </div>
+        <form id="feedback-form" class="opinion-form">
+          <h4>Deixe sua opinião</h4>
+          <input type="text" id="inputOpinionName" placeholder="Seu nome" required />
+          <textarea id="inputOpinionText" placeholder="Sua opinião" required></textarea>
+          <label for="inputOpinionStars">Nota:</label>
+          <select id="inputOpinionStars">
+            <option value="5">★★★★★</option>
+            <option value="4">★★★★☆</option>
+            <option value="3">★★★☆☆</option>
+            <option value="2">★★☆☆☆</option>
+            <option value="1">★☆☆☆☆</option>
+          </select>
+          <button type="submit">Enviar opinião</button>
+          <p id="opinionMessage"></p>
+        </form>
       </div>
     </section>
+    
+    <button class="btn-agendar btn-agendar-button">Marque um horário agora mesmo</button>
 
     <footer id="contato">
       <div class="footer-content">
@@ -90,8 +118,8 @@
         </div>
         <p>Endereço: Av. Getúlio Vargas, nº 7548, Calunga, Boa Vista - RR</p>
         <p>Horário: 08h–20h (Seg–Sáb)</p>
-        <p><a href="https://maps.google.com?q=Av.+Get%C3%BAlio+Vargas,+7548" target="_blank" style="color:#d4af37;">Ver
-            no Google Maps</a></p>
+        <a href="https://maps.google.com?q=Av.+Get%C3%BAlio+Vargas,+7548" target="_blank" id="see-in-map">Ver
+            no Google Maps</a>
         <iframe
           src="https://www.google.com/maps?q=Av.+Get%C3%BAlio+Vargas,+7548,+Calunga,+Boa+Vista,+Roraima&output=embed"
           width="100%" height="300" style="border:0; margin-top:1rem;" allowfullscreen="" loading="lazy"></iframe>
@@ -133,17 +161,34 @@
       <div id="booking-form">
         <div id="booking-preview" class="preview hidden">
           <strong>Data:</strong> <span id="preview-date"></span>
-          &nbsp;|&nbsp;
-          <strong>Hora:</strong> <span id="preview-time"></span>
         </div>
-        <input type="text" id="inputNome" placeholder="Seu nome" />
-        <input type="tel" id="inputTelefone" placeholder="Seu telefone" />
-        <button id="btnConfirmar">Confirmar Agendamento</button>
+        <input type="text" id="inputNome" class="inputPrimary" placeholder="Seu nome" />
+        <input type="tel" class="inputPrimary" id="inputTelefone" placeholder="Seu telefone" />
+        <button id="btnConfirmar">Solicitar agendamento</button>
         <p id="mensagemResultado"></p>
       </div>
+      <section id="minha-agenda-section" class="fade-in">
+        <div id="minha-agenda" class="scrollable-list"></div>
+      </section>
+
       <div class="wizard-nav">
         <button class="wizard-prev" data-to="2">Anterior</button>
+        <button id="btnFinish" class="wizard-finish">Finalizar</button>
       </div>
+    </div>
+
+    <!-- Passo 4: Meus Agendamentos -->
+    <div class="booking-step" data-step="4">
+      <h4>Meus Agendamentos</h4>
+
+      <!-- input de telefone (só mostra se vier pelo botão “Ver meus…” ) -->
+      <div id="agenda-search">
+        <input type="tel" class="inputPrimary" id="searchTelefone" placeholder="Digite seu telefone" />
+        <button id="btn-search-agendamentos" class="btn-agendar">Buscar</button>
+      </div>
+
+      <!-- lista -->
+      <div id="minha-agenda-list"></div>
     </div>
   </div>
 

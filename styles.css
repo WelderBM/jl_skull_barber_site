@@ -5,6 +5,7 @@
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: #d4af37 #111;
+  font-family: Arial, Helvetica, sans-serif;
 }
 body {
   font-family: Georgia, serif;
@@ -212,10 +213,16 @@ main {
 .sobre {
   padding: 4rem 2rem;
 }
-.sobre h3 {
+.about-label {
+  font-size: 2rem;
+  color: #fff;
+  text-align: flex-start;
+}
+.sobre-header h3 {
   color: #d4af37;
-  text-align: center;
-  margin-bottom: 2rem;
+  text-align: flex-start;
+  width: fit-content;
+  border-bottom: solid 2px #d4af37;
 }
 .sobre-container {
   display: flex;
@@ -235,6 +242,7 @@ main {
 }
 .destaques {
   list-style: none;
+  text-align: start;
 }
 .destaques li::before {
   content: "✓ ";
@@ -251,6 +259,15 @@ main {
   color: #d4af37;
   margin: 2rem 0;
 }
+.avaliacoes-verticais > div{
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.avaliacoes-verticais > div > div{
+  width: 50%;
+}
 #avaliacoes-container {
   display: flex;
   flex-direction: column;
@@ -258,13 +275,14 @@ main {
   align-items: center;
   gap: 1rem;
   height: calc(3 * 120px + 2rem);
+  width: 100%;
 }
 .avaliacao {
   background: #222;
   border-left: 4px solid #d4af37;
   border-radius: 6px;
   padding: 1rem;
-  max-width: 600px;
+  max-width: 1100px;
   width: 100%;
   margin: 0;
 }
@@ -292,11 +310,83 @@ main {
   background: #b8962e;
 }
 
+/* Feedback Form (Opiniões) */
+#feedback-form.opinion-form {
+  background: #2b2b2b;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+#feedback-form.opinion-form h4 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+#feedback-form.opinion-form label {
+  color: #fff;
+  margin-bottom: .25rem;
+  display: block;
+  font-size: .95rem;
+}
+
+#feedback-form.opinion-form input,
+#feedback-form.opinion-form textarea,
+#feedback-form.opinion-form select {
+  width: 100%;
+  padding: .75rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 4px;
+  background: #222;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  resize: vertical;
+}
+
+#feedback-form.opinion-form textarea {
+  min-height: 100px;
+}
+
+#feedback-form.opinion-form button[type="submit"] {
+  display: inline-block;
+  padding: .75rem 1.5rem;
+  background: #d4af37;
+  color: #111;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background .3s;
+  margin-top: 1rem;
+}
+
+#feedback-form.opinion-form button[type="submit"]:hover {
+  background: #b8962e;
+}
+
+#opinionMessage {
+  color: #d4af37;
+  margin-top: .5rem;
+  min-height: 1em;
+  font-size: .95rem;
+}
+
+
 /* Footer */
 footer {
   background: #000;
   padding: 2rem;
   text-align: center;
+}
+
+#see-in-map {
+  color: #00D500;
+}
+#see-in-map:hover {
+  color: #fff;
+  text-decoration: underline;
 }
 .contato-icons img {
   width: 32px;
@@ -345,9 +435,19 @@ footer {
   display:none;
   overflow: hidden;
   flex-direction: column;
+  top: 3rem;     /* baixa abaixo do título */
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;   /* bloqueia clique quando invisível */
 }
 .booking-step.active {
   display:flex;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto; 
 }
 .booking-step h4 {
   color:#d4af37;
@@ -431,7 +531,7 @@ footer {
   flex-direction:column;
   gap:1rem;
 }
-#booking-form input {
+.inputPrimary {
   padding:.75rem;
   border:none;
   border-radius:4px;
@@ -466,7 +566,8 @@ footer {
   flex-shrink:0;
 }
 .wizard-prev,
-.wizard-next {
+.wizard-next,
+.wizard-finish {
   background:none;
   border:none;
   font-size:1rem;
@@ -475,9 +576,32 @@ footer {
   cursor:pointer;
   transition: color .2s;
 }
+.wizard-finish {
+  border: solid 2px #008000;
+  color:#008000;
+  padding: 0.5rem 1rem ;
+  border-radius: 12px;
+}
 .wizard-prev:hover,
 .wizard-next:hover {
   color:#fff;
+}
+.wizard-finish:hover {
+  color:#fff;
+  border: solid 2px #fff;
+}
+
+wizard-next:not(:disabled):hover,
+.wizard-prev:not(:disabled):hover,
+.wizard-finish:not(:disabled):hover {
+  color: #fff;
+}
+
+.wizard-next:disabled,
+.wizard-prev:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #777;  /* suaviza cor do ícone/texto */
 }
 
 /* Button Agendar */
@@ -487,8 +611,8 @@ footer {
   max-width:400px;
   margin:2rem auto 0;
   padding:1rem;
-  background:#d4af37;
-  color:#111;
+  background:#00d500;
+  color:#fff;
   font-size:1.1rem;
   font-weight:bold;
   border:none;
@@ -500,6 +624,9 @@ footer {
 }
 .btn-agendar:hover {
   transform:scale(1.03);
+}
+.btn-agendar-button {
+  margin: 2rem auto;
 }
 @keyframes pulse {
   50% { box-shadow:0 0 0 12px rgba(212,175,55,0); }
@@ -534,6 +661,122 @@ footer {
 }
 .hidden { display: none; }
 
+.skeleton-calendar,
+.skeleton-timeslots {
+  background: #333;
+  border-radius: 4px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+.skeleton-calendar { height: 200px; margin: 1rem 0; }
+.skeleton-timeslots { height: 100px; margin: 1rem 0; }
+
+.skeleton-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 1rem 0;
+}
+.skeleton-calendar-grid .skeleton-day {
+  height: 2.4rem;
+  background: #333;
+  border-radius: 4px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.skeleton-day {
+  height: 40px;
+  background: #333;
+  border-radius: 4px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+#btnConfirmar {
+  margin-top: 12px;
+}
+
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* Seção “Meus Agendamentos” */
+#minha-agenda-section {
+  padding: 2rem;
+  background: #1a1a1a;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+#minha-agenda-section h3 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+/* Container de itens */
+#minha-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Cada agendamento */
+#minha-agenda .meu-agendamento-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #222;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+}
+
+/* Texto do agendamento */
+#minha-agenda .meu-agendamento-item span {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+/* Botão “Cancelar” */
+#btnCancelar, .cancel-btn {
+  background: #d9534f;
+  color: #fff;
+  border: none;
+  padding: 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+#btnCancelar:hover, .cancel-btn:hover {
+  background: #c9302c;
+}
+
+.btn-secondary {
+  display: block;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1.5rem;
+  background: #444;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .3s;
+}
+.btn-secondary:hover {
+  background: #555;
+}
+
+.scrollable-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 0.5rem; /* espaço pro scrollbar */
+}
 
 
 /* Responsive */
@@ -604,5 +847,9 @@ footer {
     transform: rotate(90deg);
     color: #fff;
   }
+    .sobre-header h3 {
+  text-align: center;
+  width: 100%;
+}
 }
 
