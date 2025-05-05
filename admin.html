@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>JL SKULL BARBER — Admin</title>
+    <link rel="stylesheet" href="admin.css" />
+    <script type="module" src="admin.js"></script>
+</head>
+
+<body>
+    <div id="login" class="login-container">
+        <h2>Área do Barbeiro</h2>
+        <input type="password" id="pwd" placeholder="Senha" />
+        <button id="btnLogin">Entrar</button>
+        <p id="loginMsg" class="error"></p>
+    </div>
+
+    <div id="admin" class="admin-container hidden">
+        <h2>Solicitações Pendentes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="pendings"></tbody>
+        </table>
+        <p id="adminMsg"></p>
+    </div>
+</body>
+
+</html>
