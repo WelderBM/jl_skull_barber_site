@@ -35,9 +35,10 @@ const OPINIOES_MOCK = [
     { nome: "Ricardo Oliveira", texto: "Profissionais nota 10, virei cliente fiel.", estrelas: 5 }
 ];
 
-// formata datas para “Hoje”, “Amanhã” ou “Próxima X”
+// formata datas para "Hoje", "Amanhã" ou "Próxima X"
 function formatDateLabel(dateStr) {
-    const d = new Date(dateStr);
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const diff = Math.round((d - today) / 86400000);
     if (diff === 0) return "Hoje";
@@ -49,7 +50,7 @@ function formatDateLabel(dateStr) {
     return d.toLocaleDateString("pt-BR");
 }
 
-// formata ISO → “Hoje às hh:mm”, etc.
+// formata ISO → "Hoje às hh:mm", etc.
 function formatHorario(iso) {
     const dt = new Date(iso);
     const base = new Date(dt); base.setHours(0, 0, 0, 0);
@@ -70,10 +71,14 @@ function formatHorario(iso) {
 let opinioesData = [], opinioesPage = 1, opinioesPerPage = 3;
 
 async function carregarOpinioes() {
-    const snap = await getDocs(collection(db, "opinioes"));
-    opinioesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (opinioesData.length <= 3) {
-        opinioesData = opinioesData.concat(OPINIOES_MOCK.slice(0, 5 - opinioesData.length));
+    try {
+        const snap = await getDocs(collection(db, "opinioes"));
+        opinioesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (opinioesData.length < 3) {
+            opinioesData = opinioesData.concat(OPINIOES_MOCK.slice(0, 5 - opinioesData.length));
+        }
+    } catch (e) {
+        opinioesData = [...OPINIOES_MOCK];
     }
     renderOpinioes();
 }
@@ -81,7 +86,8 @@ async function carregarOpinioes() {
 function renderOpinioes() {
     const container = document.getElementById("avaliacoes-container");
     container.innerHTML = "";
-    const totalPages = Math.ceil(opinioesData.length / opinioesPerPage);
+    const totalPages = Math.max(1, Math.ceil(opinioesData.length / opinioesPerPage));
+    if (opinioesPage > totalPages) opinioesPage = totalPages;
     const start = (opinioesPage - 1) * opinioesPerPage;
     opinioesData.slice(start, start + opinioesPerPage).forEach(av => {
         const d = document.createElement("div");
@@ -100,6 +106,7 @@ function renderOpinioes() {
 
 document.addEventListener("DOMContentLoaded", () => {
     carregarOpinioes();
+
     document.getElementById("prev-page").onclick = () => {
         if (opinioesPage > 1) { opinioesPage--; renderOpinioes(); }
     };
@@ -120,34 +127,32 @@ document.addEventListener("DOMContentLoaded", () => {
             msgOpinion.textContent = "⛔ Preencha nome e comentário.";
             return;
         }
-        await addDoc(collection(db, "opinioes"), {
-            nome, texto, estrelas, criadoEm: new Date().toISOString()
-        });
+        try {
+            await addDoc(collection(db, "opinioes"), {
+                nome, texto, estrelas, criadoEm: new Date().toISOString()
+            });
+        } catch (e) { /* offline fallback */ }
         opinioesData.push({ nome, texto, estrelas });
-        if (opinioesData.length > 5) opinioesData.shift();
         feedbackForm.reset();
         msgOpinion.textContent = "✅ Opinião enviada!";
+        setTimeout(() => { msgOpinion.textContent = ""; }, 4000);
         renderOpinioes();
     });
 
-    // configuração inicial do agendamento
+    // ─── timeslots de 08:00 a 19:30 ────────────────────────────
     const timeslots = [];
     for (let h = 8; h <= 19; h++) {
         const hh = String(h).padStart(2, "0");
         timeslots.push(`${hh}:00`, `${hh}:30`);
     }
-    let selectedDate = null, selectedTimes = [];
+    let selectedDate = null, selectedTime = null; // ← apenas 1 horário por agendamento
 
-    const btnAgendar = document.querySelector(".btn-agendar");
-    const btnViewAppointments = document.getElementById("btn-view-agendamentos");
-    const btnSearchAppointments = document.getElementById("btn-search-agendamentos");
-    const searchTelefone = document.getElementById("searchTelefone");
+    // ─── Referências de UI ──────────────────────────────────────
     const overlay = document.getElementById("modal-overlay");
     const modal = document.getElementById("modal");
     const btnClose = document.getElementById("modal-close");
     const calEl = document.getElementById("calendar");
     const tsContainer = document.getElementById("horarios-disponiveis");
-    const bookingForm = document.getElementById("booking-form");
     const inputNome = document.getElementById("inputNome");
     const inputTel = document.getElementById("inputTelefone");
     const btnConfirm = document.getElementById("btnConfirmar");
@@ -158,70 +163,128 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnStep2Next = document.getElementById("btn-step2-next");
     const minhaAgenda = document.getElementById("minha-agenda");
     const minhaAgendaList = document.getElementById("minha-agenda-list");
+    const btnViewAppointments = document.getElementById("btn-view-agendamentos");
+    const btnSearchAppointments = document.getElementById("btn-search-agendamentos");
+    const searchTelefone = document.getElementById("searchTelefone");
+    const minhaAgendaSection = document.getElementById("minha-agenda-section");
 
+    // ─── Navegação entre steps ──────────────────────────────────
     function goToStep(n) {
         document.querySelectorAll(".booking-step").forEach(s => s.classList.remove("active"));
         document.querySelector(`.booking-step[data-step="${n}"]`).classList.add("active");
     }
 
-    // carrega reservas já feitas
+    // ─── Abrir e fechar modal ───────────────────────────────────
+    function openModal() {
+        overlay.classList.remove("hidden");
+        modal.classList.remove("hidden");
+        // pequeno delay para a transição CSS funcionar
+        requestAnimationFrame(() => {
+            overlay.classList.add("modal-open");
+            modal.classList.add("modal-open");
+        });
+        document.body.classList.add("modal-opened");
+    }
+
+    function closeModal() {
+        overlay.classList.remove("modal-open");
+        modal.classList.remove("modal-open");
+        document.body.classList.remove("modal-opened");
+        setTimeout(() => {
+            overlay.classList.add("hidden");
+            modal.classList.add("hidden");
+        }, 300);
+    }
+
+    btnClose.onclick = closeModal;
+
+    // Fecha ao clicar fora (no overlay)
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeModal();
+    });
+
+    // ─── carrega reservas já feitas da barbearia ────────────────
     async function loadAvailabilities(m, y) {
         const start = new Date(y, m, 1).toISOString();
         const end = new Date(y, m + 1, 1).toISOString();
-        const snap = await getDocs(query(
-            collection(db, "agendamentos"),
-            where("status", "in", ["confirmado", "pendente"]),
-            where("horario", ">=", start),
-            where("horario", "<", end)
-        ));
-        const byDate = {};
-        snap.forEach(d => {
-            const h = d.data().horario;
-            const dS = h.slice(0, 10), t = h.slice(11, 16);
-            byDate[dS] = byDate[dS] || [];
-            byDate[dS].push(t);
-        });
-        return byDate;
+        try {
+            const snap = await getDocs(query(
+                collection(db, "agendamentos"),
+                where("status", "in", ["confirmado", "pendente"]),
+                where("horario", ">=", start),
+                where("horario", "<", end)
+            ));
+            const byDate = {};
+            snap.forEach(d => {
+                const h = d.data().horario;
+                const dS = h.slice(0, 10), t = h.slice(11, 16);
+                byDate[dS] = byDate[dS] || [];
+                byDate[dS].push(t);
+            });
+            return byDate;
+        } catch (e) {
+            return {};
+        }
     }
 
-    // lista reservas do cliente
-    async function loadMyAppointments() {
-        const tel = inputTel.value.trim();
-        if (!tel) return;
-        const snap = await getDocs(query(
-            collection(db, "agendamentos"),
-            where("telefone", "==", tel),
-            where("status", "in", ["confirmado", "pendente"])
-        ));
-        minhaAgenda.innerHTML = "";
-        snap.forEach(docSnap => {
-            const { horario, status } = docSnap.data();
-            const id = docSnap.id;
-            const human = formatHorario(horario);
-            const div = document.createElement("div");
-            div.className = "meu-agendamento-item";
-            div.innerHTML = `
-        <span>${human} <em>(${status})</em></span>
-        <button class="cancel-btn" data-id="${id}">Cancelar</button>
-      `;
-            minhaAgenda.appendChild(div);
-        });
-        minhaAgenda.querySelectorAll(".cancel-btn").forEach(b => {
-            b.onclick = async () => {
-                await updateDoc(doc(db, "agendamentos", b.dataset.id), { status: "cancelado" });
-                loadMyAppointments();
-            };
-        });
+    // ─── lista reservas do cliente (no passo 3) ─────────────────
+    async function loadMyAppointments(tel) {
+        if (!tel) { minhaAgenda.innerHTML = ""; return; }
+        try {
+            const snap = await getDocs(query(
+                collection(db, "agendamentos"),
+                where("telefone", "==", tel),
+                where("status", "in", ["confirmado", "pendente"])
+            ));
+            minhaAgenda.innerHTML = "";
+            if (snap.empty) {
+                minhaAgenda.innerHTML = "<p style='color:#888;font-size:.9rem;'>Nenhum agendamento anterior.</p>";
+                return;
+            }
+            snap.forEach(docSnap => {
+                const { horario, status } = docSnap.data();
+                const id = docSnap.id;
+                const human = formatHorario(horario);
+                const div = document.createElement("div");
+                div.className = "meu-agendamento-item";
+                div.innerHTML = `
+          <span>${human} <em>(${status})</em></span>
+          <button class="cancel-btn" data-id="${id}">Cancelar</button>
+        `;
+                minhaAgenda.appendChild(div);
+            });
+            minhaAgenda.querySelectorAll(".cancel-btn").forEach(b => {
+                b.onclick = async () => {
+                    b.disabled = true;
+                    b.textContent = "…";
+                    try {
+                        await updateDoc(doc(db, "agendamentos", b.dataset.id), { status: "cancelado" });
+                        b.parentElement.innerHTML = "❌ Cancelado";
+                    } catch {
+                        b.disabled = false;
+                        b.textContent = "Cancelar";
+                    }
+                };
+            });
+        } catch (e) {
+            minhaAgenda.innerHTML = "<p style='color:#888;'>Não foi possível carregar agendamentos.</p>";
+        }
     }
 
-    // gera calendário para agendar
+    // ─── gera calendário ────────────────────────────────────────
     function generateCalendar(m, y, bks) {
         calEl.innerHTML = "";
         ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].forEach(d => {
             const w = document.createElement("div");
-            w.textContent = d; w.style.fontWeight = "bold";
+            w.textContent = d; w.className = "cal-header";
             calEl.appendChild(w);
         });
+
+        // cabeçalho do mês
+        const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        const monthHeader = document.getElementById("cal-month-header");
+        if (monthHeader) monthHeader.textContent = `${monthNames[m]} ${y}`;
+
         const first = new Date(y, m, 1).getDay();
         for (let i = 0; i < first; i++) calEl.appendChild(document.createElement("div"));
         const last = new Date(y, m + 1, 0).getDate();
@@ -239,6 +302,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     cell.classList.add("highlight");
                     cell.onclick = () => {
                         selectedDate = ds;
+                        selectedTime = null;
+                        btnStep2Next.disabled = true;
                         calEl.querySelectorAll(".selected").forEach(x => x.classList.remove("selected"));
                         cell.classList.add("selected");
                         btnStep1Next.disabled = false;
@@ -254,29 +319,35 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // mostra horários disponíveis
+    // ─── mostra horários disponíveis ────────────────────────────
     function showAvailableTimes(ds, booked) {
         tsContainer.innerHTML = `<h4>Horários para ${formatDateLabel(ds)}</h4>`;
         const ul = document.createElement("ul");
+
         function isPast(dStr, tStr) {
             const [h, m] = tStr.split(":").map(Number);
-            const now = new Date(), day = new Date(dStr);
-            if (day.toDateString() !== now.toDateString()) return false;
+            const now = new Date();
+            const [yy, mm, dd] = dStr.split("-").map(Number);
+            const day = new Date(yy, mm - 1, dd);
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            if (day.getTime() !== today.getTime()) return false;
             return h < now.getHours() || (h === now.getHours() && m <= now.getMinutes());
         }
+
         timeslots.forEach(t => {
             const li = document.createElement("li");
             li.textContent = t;
             if (booked.includes(t) || isPast(ds, t)) {
                 li.classList.add("unavailable");
+                li.title = "Horário indisponível";
             } else {
                 li.classList.add("available");
                 li.onclick = () => {
-                    const idx = selectedTimes.indexOf(t);
-                    if (idx >= 0) { selectedTimes.splice(idx, 1); li.classList.remove("selected"); }
-                    else { selectedTimes.push(t); li.classList.add("selected"); }
-                    btnStep2Next.disabled = selectedTimes.length === 0;
-                    preview.innerHTML = `<strong>${formatDateLabel(selectedDate)}</strong>: ${selectedTimes.join(", ")}`;
+                    ul.querySelectorAll("li.selected").forEach(x => x.classList.remove("selected"));
+                    li.classList.add("selected");
+                    selectedTime = t;
+                    btnStep2Next.disabled = false;
+                    previewDt.textContent = `${formatDateLabel(selectedDate)} às ${t}`;
                     preview.classList.remove("hidden");
                 };
             }
@@ -287,143 +358,202 @@ document.addEventListener("DOMContentLoaded", () => {
         if (first) first.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
-    // abre modal no passo 1
-    btnAgendar.onclick = async () => {
-        selectedDate = null; selectedTimes = [];
-        bookingForm.classList.add("hidden");
-        calEl.classList.remove("hidden");
-        tsContainer.classList.remove("hidden");
+    // ─── Abre modal para AGENDAR (qualquer botão .btn-agendar) ──
+    async function abrirModalAgendamento() {
+        selectedDate = null;
+        selectedTime = null;
         preview.classList.add("hidden");
         msgResult.textContent = "";
         btnConfirm.disabled = false;
-        inputNome.value = inputTel.value = "";
-        btnStep1Next.disabled = btnStep2Next.disabled = true;
+        inputNome.value = "";
+        inputTel.value = "";
+        btnStep1Next.disabled = true;
+        btnStep2Next.disabled = true;
+        minhaAgenda.innerHTML = "";
+        minhaAgendaSection.classList.add("hidden");
         goToStep(1);
-        overlay.classList.remove("hidden");
-        overlay.classList.add("modal-open");
-        modal.classList.remove("hidden");
-        modal.classList.add("modal-open");
-        await loadMyAppointments();
+        openModal();
+
+        // skeleton enquanto carrega
         calEl.innerHTML = '<div class="skeleton-calendar-grid">' +
             Array(49).fill('<div class="skeleton-day"></div>').join("") +
             '</div>';
         tsContainer.innerHTML = '<div class="skeleton-timeslots"></div>';
+
         const hoje = new Date();
         const bks = await loadAvailabilities(hoje.getMonth(), hoje.getFullYear());
         generateCalendar(hoje.getMonth(), hoje.getFullYear(), bks);
-    };
+        tsContainer.innerHTML = '<p style="color:#888;text-align:center;padding:1rem;">← Selecione uma data no calendário</p>';
+    }
 
-    // abre passo 4
+    // Todos os botões de agendar
+    document.querySelectorAll(".btn-agendar").forEach(btn => {
+        btn.addEventListener("click", abrirModalAgendamento);
+    });
+
+    // ─── Abre passo 4 "Ver meus agendamentos" ──────────────────
     btnViewAppointments.onclick = () => {
         goToStep(4);
-        overlay.classList.remove("hidden"); modal.classList.remove("hidden");
-        document.body.classList.add("modal-opened");
+        minhaAgendaList.innerHTML = "";
+        searchTelefone.value = "";
+        openModal();
     };
 
-    // fecha modal
-    btnClose.onclick = () => {
-        document.body.classList.remove("modal-opened");
-        overlay.classList.add("hidden"); modal.classList.add("hidden");
-    };
-
-    // busca agendamentos por telefone
+    // ─── Busca agendamentos por telefone (passo 4) ──────────────
     btnSearchAppointments.onclick = async () => {
         const tel = searchTelefone.value.trim();
-        msgResult.textContent = ""; minhaAgendaList.innerHTML = "";
-        if (!tel) { msgResult.textContent = "⛔ Digite seu telefone!"; return; }
-        const snap = await getDocs(query(
-            collection(db, "agendamentos"),
-            where("telefone", "==", tel),
-            where("status", "in", ["confirmado", "pendente"])
-        ));
-        if (snap.empty) {
-            minhaAgendaList.innerHTML = "<p>Nenhum agendamento encontrado.</p>";
+        minhaAgendaList.innerHTML = "";
+        if (!tel) {
+            minhaAgendaList.innerHTML = "<p style='color:#d4af37;'>⛔ Digite seu telefone!</p>";
             return;
         }
-        snap.forEach(docSnap => {
-            const { horario, status } = docSnap.data(), id = docSnap.id;
-            const human = formatHorario(horario);
-            const div = document.createElement("div");
-            div.className = "meu-agendamento-item";
-            div.innerHTML = `
-        <span>${human} <em>(${status})</em></span>
-        <button class="cancel-btn" data-id="${id}">Cancelar</button>
-      `;
-            minhaAgendaList.appendChild(div);
-        });
-        minhaAgendaList.querySelectorAll(".cancel-btn").forEach(b => {
-            b.onclick = async () => {
-                await updateDoc(doc(db, "agendamentos", b.dataset.id), { status: "cancelado" });
-                b.parentElement.innerHTML = "❌ Cancelado";
-                const hoje = new Date();
-                const bks = await loadAvailabilities(hoje.getMonth(), hoje.getFullYear());
-                generateCalendar(hoje.getMonth(), hoje.getFullYear(), bks);
-            };
-        });
+        minhaAgendaList.innerHTML = "<p style='color:#888;'>Buscando…</p>";
+        try {
+            const snap = await getDocs(query(
+                collection(db, "agendamentos"),
+                where("telefone", "==", tel),
+                where("status", "in", ["confirmado", "pendente"])
+            ));
+            minhaAgendaList.innerHTML = "";
+            if (snap.empty) {
+                minhaAgendaList.innerHTML = "<p style='color:#888;'>Nenhum agendamento encontrado.</p>";
+                return;
+            }
+            snap.forEach(docSnap => {
+                const { horario, status } = docSnap.data(), id = docSnap.id;
+                const human = formatHorario(horario);
+                const div = document.createElement("div");
+                div.className = "meu-agendamento-item";
+                div.innerHTML = `
+          <span>${human} <em>(${status})</em></span>
+          <button class="cancel-btn" data-id="${id}">Cancelar</button>
+        `;
+                minhaAgendaList.appendChild(div);
+            });
+            minhaAgendaList.querySelectorAll(".cancel-btn").forEach(b => {
+                b.onclick = async () => {
+                    b.disabled = true;
+                    b.textContent = "…";
+                    try {
+                        await updateDoc(doc(db, "agendamentos", b.dataset.id), { status: "cancelado" });
+                        b.parentElement.innerHTML = "❌ Cancelado";
+                    } catch {
+                        b.disabled = false;
+                        b.textContent = "Cancelar";
+                    }
+                };
+            });
+        } catch (e) {
+            minhaAgendaList.innerHTML = "<p style='color:#d9534f;'>Erro ao buscar agendamentos.</p>";
+        }
     };
 
-    // confirma múltiplos horários
+    // ─── Confirma agendamento (passo 3) ─────────────────────────
     btnConfirm.onclick = async () => {
-        if (!selectedDate || selectedTimes.length === 0) {
-            msgResult.textContent = "⛔ Selecione data e pelo menos um horário."; return;
+        if (!selectedDate || !selectedTime) {
+            msgResult.textContent = "⛔ Selecione data e horário.";
+            return;
         }
         const nome = inputNome.value.trim(), tel = inputTel.value.trim();
-        if (!nome || !tel) {
-            msgResult.textContent = "⛔ Preencha nome e telefone."; return;
-        }
-        btnConfirm.disabled = true; msgResult.textContent = "⏳ Salvando agendamentos…";
+        if (!nome) { msgResult.textContent = "⛔ Informe seu nome."; return; }
+        if (!tel) { msgResult.textContent = "⛔ Informe seu telefone."; return; }
+
+        btnConfirm.disabled = true;
+        msgResult.textContent = "⏳ Salvando agendamento…";
         try {
-            const refs = await Promise.all(selectedTimes.map(t =>
-                addDoc(collection(db, "agendamentos"), {
-                    horario: `${selectedDate}T${t}:00`,
-                    nome, telefone: tel, status: "pendente", criadoEm: new Date().toISOString()
-                })
-            ));
-            msgResult.textContent = `✅ ${refs.length} agendamento(s) pendente(s)!`;
-            minhaAgenda.innerHTML = refs.map((r, i) => `
+            const ref = await addDoc(collection(db, "agendamentos"), {
+                horario: `${selectedDate}T${selectedTime}:00`,
+                nome, telefone: tel, status: "pendente", criadoEm: new Date().toISOString()
+            });
+            msgResult.textContent = "✅ Agendamento solicitado! Aguarde confirmação.";
+            msgResult.style.color = "#25D366";
+
+            // mostra o agendamento na lista abaixo do form
+            minhaAgenda.innerHTML = `
         <div class="meu-agendamento-item">
-          <span>${formatHorario(`${selectedDate}T${selectedTimes[i]}:00`)}</span>
-          <button class="cancel-btn" data-id="${r.id}">Cancelar</button>
+          <span>${formatHorario(`${selectedDate}T${selectedTime}:00`)} <em>(pendente)</em></span>
+          <button class="cancel-btn" data-id="${ref.id}">Cancelar</button>
         </div>
-      `).join("");
+      `;
+            minhaAgendaSection.classList.remove("hidden");
             minhaAgenda.querySelectorAll(".cancel-btn").forEach(b => {
                 b.onclick = async () => {
-                    await updateDoc(doc(db, "agendamentos", b.dataset.id), { status: "cancelado" });
-                    b.parentElement.innerHTML = "❌ Cancelado";
-                    const hoje = new Date();
-                    const bks = await loadAvailabilities(hoje.getMonth(), hoje.getFullYear());
-                    generateCalendar(hoje.getMonth(), hoje.getFullYear(), bks);
+                    b.disabled = true;
+                    b.textContent = "…";
+                    try {
+                        await updateDoc(doc(db, "agendamentos", b.dataset.id), { status: "cancelado" });
+                        b.parentElement.innerHTML = "❌ Cancelado";
+                    } catch {
+                        b.disabled = false;
+                        b.textContent = "Cancelar";
+                    }
                 };
             });
         } catch {
             msgResult.textContent = "❌ Erro ao agendar. Tente novamente.";
+            msgResult.style.color = "#d9534f";
             btnConfirm.disabled = false;
         }
     };
 
-    // navegação entre steps
+    // ─── Botão Finalizar (fecha o modal) ────────────────────────
+    document.getElementById("btnFinish").onclick = () => {
+        closeModal();
+    };
+
+    // ─── Navegação entre steps (wizard-next / wizard-prev) ──────
     document.querySelectorAll(".wizard-next,.wizard-prev").forEach(btn => {
         btn.onclick = () => {
-            const cur = document.querySelector(".booking-step.active").dataset.step;
-            const to = btn.dataset.to;
-            if (cur === "3" && to === "2") {
-                selectedTimes = []; tsContainer.querySelectorAll("li.selected").forEach(li => li.classList.remove("selected"));
-                preview.classList.add("hidden"); btnStep2Next.disabled = true;
+            if (btn.disabled) return;
+            const to = parseInt(btn.dataset.to, 10);
+            // Ao voltar do passo 3 para 2, limpa a seleção de horário
+            if (to === 2) {
+                selectedTime = null;
+                btnStep2Next.disabled = true;
+                if (selectedDate) {
+                    tsContainer.querySelectorAll("li.selected").forEach(li => li.classList.remove("selected"));
+                    preview.textContent = "";
+                    previewDt.textContent = formatDateLabel(selectedDate);
+                }
             }
-            document.querySelector(".booking-step.active").classList.remove("active");
-            document.querySelector(`.booking-step[data-step="${to}"]`).classList.add("active");
+            // Ao avançar para passo 3, atualiza o preview e carrega agendamentos anteriores
+            if (to === 3) {
+                previewDt.textContent = `${formatDateLabel(selectedDate)} às ${selectedTime}`;
+                preview.classList.remove("hidden");
+                const tel = inputTel.value.trim();
+                if (tel) loadMyAppointments(tel);
+            }
+            goToStep(to);
         };
     });
 
-    // scroll suave menu
+    // ─── Scroll suave menu ──────────────────────────────────────
     document.querySelectorAll(".nav-links a").forEach(a => {
         a.onclick = e => {
             e.preventDefault();
-            document.querySelector(a.getAttribute("href"))?.scrollIntoView({ behavior: "smooth" });
-            document.querySelector(".nav-links").classList.remove("active");
+            const target = document.querySelector(a.getAttribute("href"));
+            if (target) target.scrollIntoView({ behavior: "smooth" });
+            const navLinks = document.querySelector(".nav-links");
+            navLinks.classList.remove("active");
+            document.querySelector(".hamburger").classList.remove("active");
         };
     });
-    document.querySelector(".hamburger").onclick = () => {
+
+    // ─── Hamburger menu ─────────────────────────────────────────
+    const hamburger = document.querySelector(".hamburger");
+    hamburger.onclick = () => {
         document.querySelector(".nav-links").classList.toggle("active");
+        hamburger.classList.toggle("active");
     };
+
+    // Fecha o menu mobile ao clicar fora
+    document.addEventListener("click", (e) => {
+        const navLinks = document.querySelector(".nav-links");
+        if (navLinks.classList.contains("active") &&
+            !navLinks.contains(e.target) &&
+            !hamburger.contains(e.target)) {
+            navLinks.classList.remove("active");
+            hamburger.classList.remove("active");
+        }
+    });
 });
