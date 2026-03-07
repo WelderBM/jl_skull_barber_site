@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Diagnóstico Firebase — JL Skull</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; padding: 2rem; }
+    h2 { color: #d4af37; }
+    .ok { color: #25D366; }
+    .err { color: #d9534f; }
+    .info { color: #d4af37; }
+    button { margin: .5rem; padding: .5rem 1rem; cursor: pointer; background:#333; color:#fff; border:1px solid #555; border-radius:4px; }
+    button:hover { background: #444; }
+    #log { white-space: pre-wrap; background:#1a1a1a; padding:1rem; border-radius:6px; margin-top:1rem; max-height:70vh; overflow-y:auto; font-size:.85rem; }
+    input { padding:.4rem; background:#222; color:#fff; border:1px solid #444; border-radius:4px; margin:.25rem; }
+  </style>
+</head>
+<body>
+  <h2>🔧 Diagnóstico Firebase — JL Skull Barber</h2>
+  <div>
+    <button onclick="testRead()">1. Testar LEITURA (agendamentos)</button>
+    <button onclick="testWrite()">2. Testar ESCRITA (agendamento teste)</button>
+    <button onclick="testOpinioes()">3. Testar OPINIÕES</button>
+    <button onclick="clearLog()">Limpar log</button>
+  </div>
+  <div>
+    <input id="testDate" type="date" />
+    <input id="testTime" type="time" value="10:00" />
+    <input id="testNome" placeholder="Nome" value="Teste Firebase" />
+    <input id="testTel" placeholder="Telefone" value="95999999999" />
+  </div>
+  <div id="log">Aguardando ação...</div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.0/firebase-app.js";
+    import {
+      initializeFirestore, collection, query, where,
+      getDocs, addDoc, orderBy, limit
+    } from "https://www.gstatic.com/firebasejs/9.17.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB8Ax9_9JeVV2D48v6C7JqPmC4XG5gPryw",
+      authDomain: "mix-novidades.firebaseapp.com",
+      projectId: "mix-novidades",
+      storageBucket: "mix-novidades.firebasestorage.app",
+      messagingSenderId: "155436196034",
+      appId: "1:155436196034:web:504b95331e286516a55b5b"
+    };
+
+    const logEl = document.getElementById("log");
+    function log(msg, cls = "") {
+      const d = new Date().toLocaleTimeString("pt-BR");
+      logEl.innerHTML += `\n<span class="${cls}">[${d}] ${msg}</span>`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    window.clearLog = () => { logEl.innerHTML = ""; };
+
+    log("Inicializando Firebase...", "info");
+    let app, db;
+    try {
+      app = initializeApp(firebaseConfig);
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+      });
+      log("✅ Firebase inicializado com sucesso!", "ok");
+    } catch(e) {
+      log("❌ Erro ao inicializar Firebase: " + e.message, "err");
+    }
+
+    window.testRead = async () => {
+      log("\n--- TESTE DE LEITURA ---", "info");
+      try {
+        log("Buscando agendamentos na coleção 'agendamentos'...");
+        const snap = await getDocs(collection(db, "agendamentos"));
+        log(`✅ Leitura OK! Total de documentos: ${snap.size}`, "ok");
+        snap.forEach(d => {
+          const data = d.data();
+          log(`  → ID: ${d.id} | Horário: ${data.horario} | Status: ${data.status} | Nome: ${data.nome}`);
+        });
+        if (snap.empty) log("  (coleção vazia ou sem permissão de acesso)", "info");
+      } catch(e) {
+        log("❌ Erro na LEITURA: " + e.code + " — " + e.message, "err");
+        if (e.code === "permission-denied") {
+          log("⚠️  REGRAS DO FIRESTORE BLOQUEANDO! Vá ao Firebase Console → Firestore → Regras e permita leituras.", "err");
+        }
+      }
+    };
+
+    window.testWrite = async () => {
+      log("\n--- TESTE DE ESCRITA ---", "info");
+      const date = document.getElementById("testDate").value || new Date().toISOString().slice(0,10);
+      const time = document.getElementById("testTime").value || "10:00";
+      const nome = document.getElementById("testNome").value;
+      const tel  = document.getElementById("testTel").value;
+      const horario = `${date}T${time}:00`;
+      log(`Tentando salvar agendamento: ${horario} | ${nome} | ${tel}...`);
+      try {
+        const ref = await addDoc(collection(db, "agendamentos"), {
+          horario, nome, telefone: tel,
+          status: "pendente",
+          criadoEm: new Date().toISOString(),
+          _teste: true
+        });
+        log(`✅ Escrita OK! ID do documento: ${ref.id}`, "ok");
+        log("Agendamento salvo com sucesso no Firestore!", "ok");
+      } catch(e) {
+        log("❌ Erro na ESCRITA: " + e.code + " — " + e.message, "err");
+        if (e.code === "permission-denied") {
+          log("⚠️  REGRAS DO FIRESTORE BLOQUEANDO ESCRITA! Vá ao Firebase Console → Firestore → Regras.", "err");
+        }
+      }
+    };
+
+    window.testOpinioes = async () => {
+      log("\n--- TESTE DE OPINIÕES ---", "info");
+      try {
+        const snap = await getDocs(collection(db, "opinioes"));
+        log(`✅ Leitura opiniões OK! Total: ${snap.size}`, "ok");
+        snap.forEach(d => {
+          const data = d.data();
+          log(`  → ${data.nome}: "${data.texto}" (${data.estrelas}★)`);
+        });
+      } catch(e) {
+        log("❌ Erro ao ler opiniões: " + e.code + " — " + e.message, "err");
+      }
+    };
+
+    // Seta a data de hoje no campo
+    document.getElementById("testDate").value = new Date().toISOString().slice(0,10);
+  </script>
+</body>
+</html>
