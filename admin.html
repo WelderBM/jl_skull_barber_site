@@ -12,13 +12,17 @@
 <body>
     <div id="login" class="login-container">
         <h2>Área do Barbeiro</h2>
-        <input type="password" id="pwd" placeholder="Senha" />
+        <input type="email" id="email" placeholder="E-mail" autocomplete="username" />
+        <input type="password" id="pwd" placeholder="Senha" autocomplete="current-password" />
         <button id="btnLogin">Entrar</button>
         <p id="loginMsg" class="error"></p>
     </div>
 
     <div id="admin" class="admin-container hidden">
-        <h2>Solicitações Pendentes</h2>
+        <div class="admin-header">
+            <h2>Solicitações Pendentes</h2>
+            <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
         <table>
             <thead>
                 <tr>
